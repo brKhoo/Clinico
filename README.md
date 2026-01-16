@@ -4,7 +4,7 @@ A modern, full-stack appointment scheduling web application built with Next.js, 
 
 ## Features
 
-- **Multiple Roles and Access Levels** - Two user roles: Patient and Provider with separate dashboards
+- **Multiple Roles and Access Levels (RBAC)** - Two user roles: Patient and Provider with separate dashboards
 - **User Authentication** - Secure login and signup with NextAuth.js
 - **Appointment Management** - Create, view, reschedule, and cancel appointments
 - **Scheduling Logic** - Schedule conflict detection and availability management
