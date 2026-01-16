@@ -33,17 +33,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ slots: [] })
     }
 
-    // Get exceptions for this date
-    const exception = await prisma.availabilityException.findFirst({
-      where: {
-        userId: providerId,
-        date: {
-          gte: startOfDay(selectedDate),
-          lt: addDays(startOfDay(selectedDate), 1),
-        },
-      },
-    })
-
     // Get existing appointments for this date
     const appointments = await prisma.appointment.findMany({
       where: {
@@ -57,12 +46,8 @@ export async function GET(request: Request) {
     })
 
     // Generate available slots
-    const [startHour, startMinute] = exception?.startTime
-      ? exception.startTime.split(":").map(Number)
-      : availability.startTime.split(":").map(Number)
-    const [endHour, endMinute] = exception?.endTime
-      ? exception.endTime.split(":").map(Number)
-      : availability.endTime.split(":").map(Number)
+    const [startHour, startMinute] = availability.startTime.split(":").map(Number)
+    const [endHour, endMinute] = availability.endTime.split(":").map(Number)
 
     const slots: string[] = []
     const start = new Date(selectedDate)
@@ -94,7 +79,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ slots })
   } catch (error) {
-    console.error("Error fetching slots:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

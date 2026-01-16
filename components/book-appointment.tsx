@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { Calendar, Clock, User, ArrowLeft } from "lucide-react"
+import { Clock, User, ArrowLeft } from "lucide-react"
 import { format, addDays, startOfWeek, isSameDay } from "date-fns"
-import { WaitlistJoin } from "@/components/waitlist-join"
 
 interface AppointmentType {
   id: string
@@ -87,7 +86,6 @@ export default function BookAppointment() {
         setAppointmentTypes(data)
       }
     } catch (error) {
-      console.error("Failed to fetch appointment types:", error)
     }
   }
 
@@ -99,7 +97,6 @@ export default function BookAppointment() {
         setProviders(data)
       }
     } catch (error) {
-      console.error("Failed to fetch providers:", error)
     }
   }
 
@@ -116,7 +113,6 @@ export default function BookAppointment() {
         setAvailableSlots(data.slots || [])
       }
     } catch (error) {
-      console.error("Failed to fetch slots:", error)
     } finally {
       setLoading(false)
     }
@@ -174,20 +170,11 @@ export default function BookAppointment() {
         Back to Dashboard
       </Button>
 
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Book Appointment</h1>
-          <p className="text-muted-foreground">
-            {step === "type" && "Select an appointment type"}
-            {step === "provider" && "Choose a provider"}
-            {step === "date" && "Select a date"}
-            {step === "time" && "Choose a time slot"}
-          </p>
-        </div>
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Book Appointment</h1>
 
-        {/* Step 1: Appointment Type */}
         {step === "type" && (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             {appointmentTypes.map((type) => (
               <Card
                 key={type.id}
@@ -197,89 +184,60 @@ export default function BookAppointment() {
                   setStep("provider")
                 }}
               >
-                <CardHeader>
-                  <CardTitle>{type.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {type.description && <p className="text-sm text-muted-foreground mb-2">{type.description}</p>}
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {type.duration} min
-                    </span>
-                  </div>
+                <CardContent className="pt-6">
+                  <CardTitle className="mb-1">{type.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {type.duration} min
+                  </p>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
 
-        {/* Step 2: Provider */}
         {step === "provider" && selectedType && (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Selected: {selectedType.name}</CardTitle>
-              </CardHeader>
-            </Card>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card
-                className="cursor-pointer hover:bg-accent transition-colors"
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Type: {selectedType.name}</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Button
+                variant="outline"
+                className="h-auto py-4 justify-start"
                 onClick={() => {
                   setSelectedProvider(null)
                   setStep("date")
                 }}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    First Available
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Book with the first available provider
-                  </p>
-                </CardContent>
-              </Card>
+                <User className="h-4 w-4 mr-2" />
+                First Available
+              </Button>
               {providers.map((provider) => (
-                <Card
+                <Button
                   key={provider.id}
-                  className={`cursor-pointer hover:bg-accent transition-colors ${
-                    selectedProvider?.id === provider.id ? "ring-2 ring-primary" : ""
-                  }`}
+                  variant={selectedProvider?.id === provider.id ? "default" : "outline"}
+                  className="h-auto py-4 justify-start"
                   onClick={() => {
                     setSelectedProvider(provider)
                     setStep("date")
                   }}
                 >
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      {provider.name || provider.email}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
+                  <User className="h-4 w-4 mr-2" />
+                  {provider.name || provider.email}
+                </Button>
               ))}
             </div>
-            <Button variant="outline" onClick={() => setStep("type")}>
+            <Button variant="ghost" size="sm" onClick={() => setStep("type")}>
               Back
             </Button>
           </div>
         )}
 
-        {/* Step 3: Date */}
         {step === "date" && selectedType && (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {selectedType.name} with{" "}
-                  {selectedProvider ? selectedProvider.name || selectedProvider.email : "First Available"}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <div className="grid grid-cols-7 gap-2" role="grid" aria-label="Select appointment date">
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {selectedProvider ? selectedProvider.name || selectedProvider.email : "First Available"}
+            </p>
+            <div className="grid grid-cols-7 gap-2">
               {weekDays.map((day) => (
                 <Button
                   key={day.toISOString()}
@@ -288,79 +246,53 @@ export default function BookAppointment() {
                     setSelectedDate(day)
                     setStep("time")
                   }}
-                  className="flex flex-col h-auto py-3"
-                  aria-label={`Select ${format(day, "EEEE, MMMM d")}`}
-                  aria-pressed={selectedDate && isSameDay(day, selectedDate)}
+                  className="flex flex-col h-auto py-2"
                 >
                   <span className="text-xs">{format(day, "EEE")}</span>
-                  <span className="text-lg font-semibold">{format(day, "d")}</span>
+                  <span className="text-base font-semibold">{format(day, "d")}</span>
                 </Button>
               ))}
             </div>
-            <Button variant="outline" onClick={() => setStep("provider")}>
+            <Button variant="ghost" size="sm" onClick={() => setStep("provider")}>
               Back
             </Button>
           </div>
         )}
 
-        {/* Step 4: Time */}
         {step === "time" && selectedType && selectedDate && (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {format(selectedDate, "EEEE, MMMM d")} - {selectedType.name}
-                </CardTitle>
-              </CardHeader>
-            </Card>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{format(selectedDate, "EEEE, MMMM d")}</p>
             {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-2 text-muted-foreground">Loading available slots...</p>
+              <div className="text-center py-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-2 text-sm text-muted-foreground">Loading slots...</p>
               </div>
             ) : availableSlots.length === 0 ? (
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="py-8 text-center">
-                    <p className="text-muted-foreground mb-4">No available slots for this date</p>
-                    <Button variant="outline" onClick={() => setStep("date")}>
-                      Choose Different Date
-                    </Button>
-                  </CardContent>
-                </Card>
-                {selectedType && (
-                  <WaitlistJoin
-                    appointmentTypeId={selectedType.id}
-                    providerId={selectedProvider?.id}
-                    onJoined={() => router.push("/patient")}
-                  />
-                )}
+              <div className="text-center py-6">
+                <p className="text-muted-foreground mb-3">No available slots</p>
+                <Button variant="outline" size="sm" onClick={() => setStep("date")}>
+                  Choose Different Date
+                </Button>
               </div>
             ) : (
               <>
-                <div className="grid gap-2 md:grid-cols-4" role="group" aria-label="Available time slots">
+                <div className="grid gap-2 md:grid-cols-4">
                   {availableSlots.map((slot) => (
                     <Button
                       key={slot}
                       variant={selectedTime === slot ? "default" : "outline"}
                       onClick={() => setSelectedTime(slot)}
-                      aria-label={`Select time ${format(new Date(slot), "h:mm a")}`}
-                      aria-pressed={selectedTime === slot}
                     >
                       {format(new Date(slot), "h:mm a")}
                     </Button>
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep("date")}>
+                  <Button variant="ghost" size="sm" onClick={() => setStep("date")}>
                     Back
                   </Button>
-                  <Button
-                    onClick={handleBook}
-                    disabled={!selectedTime || loading}
-                    className="flex-1"
-                  >
-                    {loading ? "Booking..." : "Book Appointment"}
+                  <Button onClick={handleBook} disabled={!selectedTime || loading} className="flex-1">
+                    {loading ? "Booking..." : "Book"}
                   </Button>
                 </div>
               </>

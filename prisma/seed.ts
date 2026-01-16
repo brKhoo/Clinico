@@ -4,54 +4,67 @@ import bcrypt from "bcryptjs"
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log("🌱 Seeding database...")
+  console.log("Seeding database...")
 
-  // Create provider users
-  const provider1Password = await bcrypt.hash("provider123", 10)
-  const provider1 = await prisma.user.upsert({
-    where: { email: "doctor.smith@clinico.com" },
-    update: {},
+  // Delete old provider accounts (with old emails) - safe to skip if tables don't exist
+  try {
+    await prisma.user.deleteMany({
+      where: {
+        role: "PROVIDER",
+        email: { 
+          in: ["doctor.smith@clinico.com", "doctor.jones@clinico.com"]
+        }
+      }
+    })
+    console.log("Cleaned up old provider accounts")
+  } catch (error) {
+    // Tables might not exist yet, that's okay
+    console.log("Skipping cleanup (fresh database)")
+  }
+
+  // Create provider user
+  const providerPassword = await bcrypt.hash("doc123", 10)
+  const provider = await prisma.user.upsert({
+    where: { email: "doc@clinico.com" },
+    update: {
+      name: "John Doe",
+      password: providerPassword,
+      role: "PROVIDER",
+      phone: "+1-555-0101",
+      profileComplete: true,
+    },
     create: {
-      email: "doctor.smith@clinico.com",
-      name: "Dr. Sarah Smith",
-      password: provider1Password,
+      email: "doc@clinico.com",
+      name: "John Doe",
+      password: providerPassword,
       role: "PROVIDER",
       phone: "+1-555-0101",
       profileComplete: true,
     },
   })
-  console.log("✅ Created provider 1:", provider1.email)
-
-  const provider2Password = await bcrypt.hash("provider123", 10)
-  const provider2 = await prisma.user.upsert({
-    where: { email: "doctor.jones@clinico.com" },
-    update: {},
-    create: {
-      email: "doctor.jones@clinico.com",
-      name: "Dr. John Jones",
-      password: provider2Password,
-      role: "PROVIDER",
-      phone: "+1-555-0102",
-      profileComplete: true,
-    },
-  })
-  console.log("✅ Created provider 2:", provider2.email)
+  console.log("Created/Updated provider:", provider.email)
 
   // Create patient user
   const patientPassword = await bcrypt.hash("patient123", 10)
   const patient = await prisma.user.upsert({
     where: { email: "patient@clinico.com" },
-    update: {},
+    update: {
+      name: "Brook Khoo",
+      password: patientPassword,
+      role: "PATIENT",
+      phone: "+1-555-0201",
+      profileComplete: true,
+    },
     create: {
       email: "patient@clinico.com",
-      name: "Jane Patient",
+      name: "Brook Khoo",
       password: patientPassword,
       role: "PATIENT",
       phone: "+1-555-0201",
       profileComplete: true,
     },
   })
-  console.log("✅ Created patient user:", patient.email)
+  console.log("Created/Updated patient user:", patient.email)
 
   // Create appointment types with hardcoded prices
   const appointmentTypes = [
@@ -85,39 +98,37 @@ async function main() {
     })
     if (existing) {
       createdTypes.push(existing)
-      console.log("✅ Appointment type already exists:", existing.name)
+      console.log("Appointment type already exists:", existing.name)
     } else {
       const created = await prisma.appointmentType.create({
         data: type,
       })
       createdTypes.push(created)
-      console.log("✅ Created appointment type:", created.name)
+      console.log("Created appointment type:", created.name)
     }
   }
 
-  // Create availability for providers
+  // Create availability for provider
   const daysOfWeek = [1, 2, 3, 4, 5] // Monday to Friday
-  for (const provider of [provider1, provider2]) {
-    for (const day of daysOfWeek) {
-      await prisma.availability.upsert({
-        where: {
-          userId_dayOfWeek: {
-            userId: provider.id,
-            dayOfWeek: day,
-          },
-        },
-        update: {},
-        create: {
+  for (const day of daysOfWeek) {
+    await prisma.availability.upsert({
+      where: {
+        userId_dayOfWeek: {
           userId: provider.id,
           dayOfWeek: day,
-          startTime: "09:00",
-          endTime: "17:00",
-          isAvailable: true,
         },
-      })
-    }
-    console.log(`✅ Created availability for ${provider.name}`)
+      },
+      update: {},
+      create: {
+        userId: provider.id,
+        dayOfWeek: day,
+        startTime: "09:00",
+        endTime: "17:00",
+        isAvailable: true,
+      },
+    })
   }
+  console.log(`Created availability for ${provider.name}`)
 
   // Create sample appointments
   const now = new Date()
@@ -132,17 +143,17 @@ async function main() {
   const appointments = [
     {
       patientId: patient.id,
-      providerId: provider1.id,
+      providerId: provider.id,
       appointmentTypeId: createdTypes[0].id,
       title: "General Consultation",
-      description: "Initial consultation with Dr. Smith",
+      description: "Initial consultation",
       startTime: tomorrow,
       endTime: new Date(tomorrow.getTime() + 30 * 60000),
       status: "SCHEDULED",
     },
     {
       patientId: patient.id,
-      providerId: provider2.id,
+      providerId: provider.id,
       appointmentTypeId: createdTypes[1].id,
       title: "Follow-up Visit",
       description: "Follow-up appointment",
@@ -156,7 +167,7 @@ async function main() {
     await prisma.appointment.create({
       data: apt,
     })
-    console.log("✅ Created appointment:", apt.title)
+    console.log("Created appointment:", apt.title)
   }
 
   // Create clinic policy
@@ -172,26 +183,23 @@ async function main() {
       officeDays: "1,2,3,4,5",
     },
   })
-  console.log("✅ Created clinic policy")
+  console.log("Created clinic policy")
 
-  console.log("\n🎉 Seeding completed!")
-  console.log("\n📋 Demo Credentials:")
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-  console.log("Provider 1:")
-  console.log("  Email: doctor.smith@clinico.com")
-  console.log("  Password: provider123")
-  console.log("\nProvider 2:")
-  console.log("  Email: doctor.jones@clinico.com")
-  console.log("  Password: provider123")
+  console.log("\nSeeding completed!")
+  console.log("\nDemo Credentials:")
+  console.log("----------------------------------------")
+  console.log("Provider:")
+  console.log("  Email: doc@clinico.com")
+  console.log("  Password: doc123")
   console.log("\nPatient:")
   console.log("  Email: patient@clinico.com")
   console.log("  Password: patient123")
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+  console.log("----------------------------------------")
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error seeding database:", e)
+    console.error("Error seeding database:", e)
     process.exit(1)
   })
   .finally(async () => {

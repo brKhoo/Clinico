@@ -5,27 +5,24 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, LogOut, User, FileText } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Calendar, LogOut } from "lucide-react"
 import Link from "next/link"
-
-interface Appointment {
-  id: string
-  title: string
-  description?: string
-  startTime: string
-  endTime: string
-  status: string
-  provider?: { name: string; email: string }
-  appointmentType?: { name: string; duration: number }
-}
+import { Appointment } from "@/types/appointment"
+import { LoadingSpinner } from "@/components/ui/loading"
+import { RescheduleAppointmentDialog } from "@/components/reschedule-appointment-dialog"
+import { CancelAppointmentDialog } from "@/components/cancel-appointment-dialog"
+import { AppointmentCalendar } from "@/components/appointment-calendar"
 
 export default function PatientDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [profileComplete, setProfileComplete] = useState(false)
+  const [rescheduleOpen, setRescheduleOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const [viewMode, setViewMode] = useState<"upcoming" | "past">("upcoming")
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -36,7 +33,6 @@ export default function PatientDashboard() {
   useEffect(() => {
     if (status === "authenticated") {
       fetchAppointments()
-      checkProfile()
     }
   }, [status])
 
@@ -48,45 +44,27 @@ export default function PatientDashboard() {
         setAppointments(data)
       }
     } catch (error) {
-      console.error("Failed to fetch appointments:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const checkProfile = async () => {
-    try {
-      const response = await fetch("/api/user/profile")
-      if (response.ok) {
-        const data = await response.json()
-        setProfileComplete(data.profileComplete || false)
-      }
-    } catch (error) {
-      console.error("Failed to check profile:", error)
-    }
-  }
-
-  if (status === "loading" || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
+  if (status === "loading" || isLoading) return <LoadingSpinner />
 
   if (!session) {
     return null
   }
 
-  const upcoming = appointments.filter(
-    (apt) => new Date(apt.startTime) > new Date() && apt.status === "SCHEDULED"
-  )
-  const past = appointments.filter(
-    (apt) => new Date(apt.startTime) < new Date() || apt.status !== "SCHEDULED"
-  )
+  const upcoming = appointments
+    .filter((apt) => new Date(apt.startTime) >= new Date() && apt.status === "SCHEDULED")
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+
+  const past = appointments
+    .filter((apt) => new Date(apt.startTime) < new Date() || apt.status !== "SCHEDULED")
+    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+    .slice(0, 10)
+
+  const displayedAppointments = viewMode === "upcoming" ? upcoming : past
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50/30 via-white to-emerald-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-green-950/20">
@@ -111,93 +89,54 @@ export default function PatientDashboard() {
       </nav>
 
       <main className="container mx-auto px-4 py-8">
-        {!profileComplete && (
-          <Card className="mb-6 border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <p className="text-sm font-medium">Please complete your profile to book appointments.</p>
-                </div>
-                <Link href="/patient/profile">
-                  <Button size="sm" className="shadow-sm">Complete Profile</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-3xl font-bold">Patient Dashboard</h2>
-            <p className="text-muted-foreground mt-2">
-              Manage your appointments and view your schedule
-            </p>
-          </div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">My Appointments</h2>
           <Link href="/patient/book">
-            <Button>
+            <Button size="sm">
               <Calendar className="h-4 w-4 mr-2" />
-              Book Appointment
+              Book
             </Button>
           </Link>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Upcoming
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{upcoming.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Past Appointments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{past.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{appointments.length}</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <AppointmentCalendar appointments={appointments} />
           <div>
-            <h3 className="text-2xl font-bold mb-4">Upcoming Appointments</h3>
-            {upcoming.length === 0 ? (
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant={viewMode === "upcoming" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("upcoming")}
+              >
+                Upcoming
+              </Button>
+              <Button
+                variant={viewMode === "past" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("past")}
+              >
+                Past
+              </Button>
+            </div>
+            <h3 className="text-xl font-bold mb-4">
+              {viewMode === "upcoming" ? "Upcoming Appointments" : "Past Appointments"}
+            </h3>
+            {displayedAppointments.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No upcoming appointments</p>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">
+                    No {viewMode === "upcoming" ? "upcoming" : "past"} appointments
+                  </p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {upcoming.map((apt) => (
+              <div className="space-y-3">
+                {displayedAppointments.map((apt) => (
                   <Card key={apt.id}>
-                    <CardContent className="pt-6">
+                    <CardContent className="pt-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-semibold text-lg">{apt.title}</h4>
+                          <h4 className="font-semibold">{apt.title}</h4>
                           <p className="text-sm text-muted-foreground mt-1">
                             {new Date(apt.startTime).toLocaleDateString()} at{" "}
                             {new Date(apt.startTime).toLocaleTimeString([], {
@@ -207,28 +146,43 @@ export default function PatientDashboard() {
                           </p>
                           {apt.provider && (
                             <p className="text-sm text-muted-foreground mt-1">
-                              Provider: {apt.provider.name}
+                              {apt.provider.name}
                             </p>
+                          )}
+                          {viewMode === "past" && (
+                            <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-muted">
+                              {apt.status}
+                            </span>
                           )}
                         </div>
                         <div className="flex gap-2">
                           <Link href={`/patient/appointments/${apt.id}`}>
                             <Button variant="outline" size="sm">
-                              View Details
+                              View
                             </Button>
                           </Link>
-                          {new Date(apt.startTime) > new Date() && (
+                          {viewMode === "upcoming" && (
                             <>
-                              <Link href={`/patient/appointments/${apt.id}/reschedule`}>
-                                <Button variant="outline" size="sm">
-                                  Reschedule
-                                </Button>
-                              </Link>
-                              <Link href={`/patient/appointments/${apt.id}/cancel`}>
-                                <Button variant="destructive" size="sm">
-                                  Cancel
-                                </Button>
-                              </Link>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedAppointment(apt)
+                                  setRescheduleOpen(true)
+                                }}
+                              >
+                                Reschedule
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedAppointment(apt)
+                                  setCancelOpen(true)
+                                }}
+                              >
+                                Cancel
+                              </Button>
                             </>
                           )}
                         </div>
@@ -239,41 +193,30 @@ export default function PatientDashboard() {
               </div>
             )}
           </div>
-
-          <div>
-            <h3 className="text-2xl font-bold mb-4">Past Appointments</h3>
-            {past.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No past appointments</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {past.map((apt) => (
-                  <Card key={apt.id}>
-                    <CardContent className="pt-6">
-                      <div>
-                        <h4 className="font-semibold text-lg">{apt.title}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {new Date(apt.startTime).toLocaleDateString()} at{" "}
-                          {new Date(apt.startTime).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                        <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-muted">
-                          {apt.status}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
+
+        {selectedAppointment && (
+          <>
+            <RescheduleAppointmentDialog
+              open={rescheduleOpen}
+              onOpenChange={setRescheduleOpen}
+              appointment={selectedAppointment}
+              onRescheduled={() => {
+                fetchAppointments()
+                setRescheduleOpen(false)
+              }}
+            />
+            <CancelAppointmentDialog
+              open={cancelOpen}
+              onOpenChange={setCancelOpen}
+              appointment={selectedAppointment}
+              onCancelled={() => {
+                fetchAppointments()
+                setCancelOpen(false)
+              }}
+            />
+          </>
+        )}
       </main>
     </div>
   )

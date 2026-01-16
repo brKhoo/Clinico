@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
@@ -52,7 +52,6 @@ export default function AvailabilityPage() {
         setAvailability(availabilityMap)
       }
     } catch (error) {
-      console.error("Failed to fetch availability:", error)
     } finally {
       setIsLoading(false)
     }
@@ -103,112 +102,91 @@ export default function AvailabilityPage() {
     }))
   }
 
-  if (status === "loading" || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return null
+  if (status === "loading" || isLoading || !session) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Clinico Scheduler</h1>
-        </div>
-      </nav>
+    <div className="container mx-auto px-4 py-8">
+      <Link href="/dashboard">
+        <Button variant="ghost" className="mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+      </Link>
 
-      <main className="container mx-auto px-4 py-8">
-        <Link href="/dashboard">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </Link>
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Availability Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {DAYS.map((day, index) => {
+              const dayAvailability = availability[index] || {
+                dayOfWeek: index,
+                startTime: "09:00",
+                endTime: "17:00",
+                isAvailable: false,
+              }
 
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>Availability Settings</CardTitle>
-              <CardDescription>
-                Set your available hours for each day of the week
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {DAYS.map((day, index) => {
-                  const dayAvailability = availability[index] || {
-                    dayOfWeek: index,
-                    startTime: "09:00",
-                    endTime: "17:00",
-                    isAvailable: false,
-                  }
+              return (
+                <div key={index} className="border rounded p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">{day}</h3>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={dayAvailability.isAvailable}
+                        onChange={(e) =>
+                          handleDayChange(index, "isAvailable", e.target.checked)
+                        }
+                        className="rounded"
+                      />
+                      Available
+                    </label>
+                  </div>
 
-                  return (
-                    <div key={index} className="border rounded-lg p-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold">{day}</h3>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={dayAvailability.isAvailable}
-                            onChange={(e) =>
-                              handleDayChange(index, "isAvailable", e.target.checked)
-                            }
-                            className="rounded"
-                          />
-                          <span className="text-sm">Available</span>
-                        </label>
+                  {dayAvailability.isAvailable && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Start</Label>
+                        <Input
+                          type="time"
+                          value={dayAvailability.startTime}
+                          onChange={(e) =>
+                            handleDayChange(index, "startTime", e.target.value)
+                          }
+                          className="mt-1"
+                        />
                       </div>
-
-                      {dayAvailability.isAvailable && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Start Time</Label>
-                            <Input
-                              type="time"
-                              value={dayAvailability.startTime}
-                              onChange={(e) =>
-                                handleDayChange(index, "startTime", e.target.value)
-                              }
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>End Time</Label>
-                            <Input
-                              type="time"
-                              value={dayAvailability.endTime}
-                              onChange={(e) =>
-                                handleDayChange(index, "endTime", e.target.value)
-                              }
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <Button
-                        onClick={() => handleSave(index)}
-                        disabled={!dayAvailability.isAvailable}
-                        size="sm"
-                      >
-                        Save {day}
-                      </Button>
+                      <div>
+                        <Label className="text-xs">End</Label>
+                        <Input
+                          type="time"
+                          value={dayAvailability.endTime}
+                          onChange={(e) =>
+                            handleDayChange(index, "endTime", e.target.value)
+                          }
+                          className="mt-1"
+                        />
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+                  )}
+
+                  <Button
+                    onClick={() => handleSave(index)}
+                    disabled={!dayAvailability.isAvailable}
+                    size="sm"
+                    className="w-full"
+                  >
+                    Save {day}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

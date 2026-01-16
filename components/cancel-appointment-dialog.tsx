@@ -62,41 +62,23 @@ export function CancelAppointmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            Cancel Appointment
-          </DialogTitle>
-          <DialogDescription>
-            Are you sure you want to cancel this appointment?
-          </DialogDescription>
+          <DialogTitle>Cancel Appointment</DialogTitle>
+          <DialogDescription>{appointment.title}</DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <p className="text-sm text-muted-foreground">
-            <strong>Appointment:</strong> {appointment.title}
+          <p className="text-sm text-muted-foreground mb-2">
+            {new Date(appointment.startTime).toLocaleString()}
           </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            <strong>Date:</strong> {new Date(appointment.startTime).toLocaleString()}
-          </p>
-          <p className="text-sm text-destructive mt-4">
-            This action cannot be undone. You may be subject to cancellation fees if you cancel within the policy cutoff time.
+          <p className="text-sm text-destructive">
+            This action cannot be undone.
           </p>
         </div>
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-          >
-            Keep Appointment
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            Keep
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            {loading ? "Cancelling..." : "Cancel Appointment"}
+          <Button type="button" variant="destructive" onClick={handleCancel} disabled={loading}>
+            {loading ? "Cancelling..." : "Cancel"}
           </Button>
         </DialogFooter>
       </DialogContent>

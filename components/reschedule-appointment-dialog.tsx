@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { Calendar } from "lucide-react"
 
 interface RescheduleAppointmentDialogProps {
   open: boolean
@@ -78,46 +77,39 @@ export function RescheduleAppointmentDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Reschedule Appointment</DialogTitle>
-          <DialogDescription>
-            Select a new date and time for your appointment: {appointment.title}
-          </DialogDescription>
+          <DialogDescription>{appointment.title}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 py-4">
             <div>
-              <Label htmlFor="startTime">Start Time</Label>
+              <Label htmlFor="startTime" className="text-sm">Start</Label>
               <Input
                 id="startTime"
                 type="datetime-local"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 required
-                aria-label="Appointment start time"
+                className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="endTime">End Time</Label>
+              <Label htmlFor="endTime" className="text-sm">End</Label>
               <Input
                 id="endTime"
                 type="datetime-local"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 required
-                aria-label="Appointment end time"
+                className="mt-1"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Rescheduling..." : "Reschedule"}
+              {loading ? "Saving..." : "Reschedule"}
             </Button>
           </DialogFooter>
         </form>

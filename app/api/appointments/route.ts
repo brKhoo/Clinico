@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { logAuditEvent } from "@/lib/audit"
 import { z } from "zod"
 
 const appointmentSchema = z.object({
@@ -182,19 +181,6 @@ export async function POST(request: Request) {
       },
     })
 
-    // Log audit event
-    await logAuditEvent(
-      session.user.id,
-      "APPOINTMENT_CREATED",
-      "Appointment",
-      appointment.id,
-      {
-        patientId: finalPatientId,
-        providerId: finalProviderId,
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-      }
-    )
 
     return NextResponse.json(appointment, { status: 201 })
   } catch (error) {

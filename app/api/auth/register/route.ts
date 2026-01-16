@@ -47,7 +47,6 @@ export async function POST(request: Request) {
       )
     }
 
-    console.error("Registration error:", error)
     return NextResponse.json(
       { 
         error: "Internal server error",

@@ -34,7 +34,6 @@ model User {
   availabilityExceptions AvailabilityException[]
   waitlistEntriesAsPatient WaitlistEntry[] @relation("WaitlistPatient")
   waitlistEntriesAsProvider WaitlistEntry[] @relation("WaitlistProvider")
-  auditLogs           AuditLog[]
   createdAppointmentTypes AppointmentType[] @relation("CreatedBy")
   
   @@index([role])
@@ -138,22 +137,6 @@ model WaitlistEntry {
   @@index([appointmentTypeId])
   @@index([providerId])
   @@index([status])
-}
-
-model AuditLog {
-  id          String   @id @default(cuid())
-  actorUserId String
-  actor       User     @relation(fields: [actorUserId], references: [id])
-  action      String   // e.g., "APPOINTMENT_CREATED", "APPOINTMENT_CANCELLED", "AVAILABILITY_UPDATED"
-  entityType  String   // e.g., "Appointment", "Availability", "User"
-  entityId    String?
-  metadata    String?  // JSON string for additional data
-  createdAt   DateTime @default(now())
-
-  @@index([actorUserId])
-  @@index([action])
-  @@index([entityType])
-  @@index([createdAt])
 }
 
 model ClinicPolicy {

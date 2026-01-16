@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { logAuditEvent } from "@/lib/audit"
 
 async function getClinicPolicy() {
   const policy = await prisma.clinicPolicy.findFirst({
@@ -172,39 +171,8 @@ export async function PATCH(
       },
     })
 
-    // Log audit events
-    if (wasRescheduled) {
-      await logAuditEvent(
-        session.user.id,
-        "APPOINTMENT_RESCHEDULED",
-        "Appointment",
-        appointment.id,
-        {
-          oldStartTime: appointment.startTime.toISOString(),
-          newStartTime: updatedAppointment.startTime.toISOString(),
-        }
-      )
-    }
-
-    if (wasStatusChanged) {
-      const actionMap: Record<string, string> = {
-        COMPLETED: "APPOINTMENT_COMPLETED",
-        CANCELLED: "APPOINTMENT_CANCELLED",
-        NO_SHOW: "APPOINTMENT_NO_SHOW",
-      }
-      const action = actionMap[status] || "APPOINTMENT_UPDATED"
-      await logAuditEvent(
-        session.user.id,
-        action as any,
-        "Appointment",
-        appointment.id,
-        { oldStatus: appointment.status, newStatus: status }
-      )
-    }
-
     return NextResponse.json(updatedAppointment)
   } catch (error) {
-    console.error("Error updating appointment:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -257,21 +225,9 @@ export async function DELETE(
       data: { status: "CANCELLED" },
     })
 
-    // Log audit event
-    await logAuditEvent(
-      session.user.id,
-      "APPOINTMENT_CANCELLED",
-      "Appointment",
-      appointment.id,
-      {
-        cancelledBy: session.user.role,
-        originalStartTime: appointment.startTime.toISOString(),
-      }
-    )
 
     return NextResponse.json({ message: "Appointment cancelled" })
   } catch (error) {
-    console.error("Error cancelling appointment:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

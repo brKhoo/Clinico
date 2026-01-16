@@ -2,33 +2,22 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Calendar, Clock, LogOut, Users, Settings, Search } from "lucide-react"
+import { Calendar, LogOut, Settings, Users } from "lucide-react"
 import Link from "next/link"
-
-interface Appointment {
-  id: string
-  title: string
-  description?: string
-  startTime: string
-  endTime: string
-  status: string
-  patient?: { name: string; email: string }
-  appointmentType?: { name: string }
-}
+import { Appointment } from "@/types/appointment"
+import { LoadingSpinner } from "@/components/ui/loading"
+import { AppointmentCalendar } from "@/components/appointment-calendar"
 
 export default function ProviderDashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<"day" | "week">("day")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("")
+  const [viewMode, setViewMode] = useState<"upcoming" | "past">("upcoming")
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -50,53 +39,27 @@ export default function ProviderDashboard() {
         setAppointments(data)
       }
     } catch (error) {
-      console.error("Failed to fetch appointments:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const filteredAppointments = useMemo(() => {
-    let filtered = appointments
+  const upcoming = appointments
+    .filter((apt) => new Date(apt.startTime) >= new Date() && apt.status === "SCHEDULED")
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (apt) =>
-          apt.title.toLowerCase().includes(query) ||
-          apt.patient?.name?.toLowerCase().includes(query) ||
-          apt.patient?.email?.toLowerCase().includes(query)
-      )
-    }
+  const past = appointments
+    .filter((apt) => new Date(apt.startTime) < new Date() || apt.status !== "SCHEDULED")
+    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+    .slice(0, 10)
 
-    if (statusFilter) {
-      filtered = filtered.filter((apt) => apt.status === statusFilter)
-    }
+  const uniquePatients = new Set(
+    appointments.map((apt) => apt.patient?.email).filter(Boolean)
+  ).size
 
-    return filtered
-  }, [appointments, searchQuery, statusFilter])
+  const displayedAppointments = viewMode === "upcoming" ? upcoming : past
 
-  const today = new Date()
-  const todayAppointments = filteredAppointments.filter(
-    (apt) =>
-      new Date(apt.startTime).toDateString() === today.toDateString() &&
-      apt.status === "SCHEDULED"
-  )
-
-  const upcoming = filteredAppointments
-    .filter((apt) => new Date(apt.startTime) > new Date() && apt.status === "SCHEDULED")
-    .slice(0, 5)
-
-  if (status === "loading" || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
+  if (status === "loading" || isLoading) return <LoadingSpinner />
 
   if (!session) {
     return null
@@ -116,16 +79,10 @@ export default function ProviderDashboard() {
             <span className="text-sm text-muted-foreground">
               {session.user?.name || session.user?.email}
             </span>
-            <Link href="/provider/availability">
+            <Link href="/availability">
               <Button variant="ghost" size="sm">
                 <Settings className="h-4 w-4 mr-2" />
                 Availability
-              </Button>
-            </Link>
-            <Link href="/provider/slots">
-              <Button variant="ghost" size="sm">
-                <Clock className="h-4 w-4 mr-2" />
-                View Slots
               </Button>
             </Link>
             <Button variant="ghost" size="sm" onClick={() => signOut()}>
@@ -137,189 +94,74 @@ export default function ProviderDashboard() {
       </nav>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-3xl font-bold">Provider Dashboard</h2>
-              <p className="text-muted-foreground mt-2">
-                Manage your schedule and patient appointments
-              </p>
-            </div>
-            <div className="flex gap-2">
-            <Button
-              variant={viewMode === "day" ? "default" : "outline"}
-              onClick={() => setViewMode("day")}
-            >
-              Day
-            </Button>
-            <Button
-              variant={viewMode === "week" ? "default" : "outline"}
-              onClick={() => setViewMode("week")}
-            >
-              Week
-            </Button>
-            <Link href="/provider/calendar">
-              <Button variant="outline">
-                <Calendar className="h-4 w-4 mr-2" />
-                Full Calendar
-              </Button>
-            </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search appointments..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                    aria-label="Search appointments"
-                  />
-                </div>
-              </div>
-              <div className="w-48">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  aria-label="Filter by status"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="SCHEDULED">Scheduled</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="CANCELLED">Cancelled</option>
-                  <option value="NO_SHOW">No Show</option>
-                </select>
-              </div>
-              {(searchQuery || statusFilter) && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("")
-                    setStatusFilter("")
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
+        <div className="grid gap-6 md:grid-cols-3 mb-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Today
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Patients</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{todayAppointments.length}</p>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-muted-foreground" />
+                <p className="text-2xl font-bold">{uniquePatients}</p>
+              </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{upcoming.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Past</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{past.length}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <AppointmentCalendar appointments={appointments} />
+          <div>
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant={viewMode === "upcoming" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("upcoming")}
+              >
                 Upcoming
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{upcoming.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Total Patients
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">
-                {new Set(appointments.map((apt) => apt.patient?.email).filter(Boolean)).size}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-2xl font-bold mb-4">Today's Schedule</h3>
-            {todayAppointments.length === 0 ? (
+              </Button>
+              <Button
+                variant={viewMode === "past" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("past")}
+              >
+                Past
+              </Button>
+            </div>
+            <h3 className="text-xl font-bold mb-4">
+              {viewMode === "upcoming" ? "Upcoming Appointments" : "Past Appointments"}
+            </h3>
+            {displayedAppointments.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No appointments scheduled for today</p>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">
+                    No {viewMode === "upcoming" ? "upcoming" : "past"} appointments
+                  </p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {todayAppointments
-                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                  .map((apt) => (
-                    <Card key={apt.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-semibold text-lg">{apt.title}</h4>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {new Date(apt.startTime).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}{" "}
-                              -{" "}
-                              {new Date(apt.endTime).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                            {apt.patient && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Patient: {apt.patient.name || apt.patient.email}
-                              </p>
-                            )}
-                          </div>
-                          <Link href={`/provider/appointments/${apt.id}`}>
-                            <Button variant="outline" size="sm">
-                              View Details
-                            </Button>
-                          </Link>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h3 className="text-2xl font-bold mb-4">Upcoming Appointments</h3>
-            {upcoming.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No upcoming appointments</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {upcoming.map((apt) => (
+              <div className="space-y-3">
+                {displayedAppointments.map((apt) => (
                   <Card key={apt.id}>
-                    <CardContent className="pt-6">
+                    <CardContent className="pt-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-semibold text-lg">{apt.title}</h4>
+                          <h4 className="font-semibold">{apt.title}</h4>
                           <p className="text-sm text-muted-foreground mt-1">
                             {new Date(apt.startTime).toLocaleDateString()} at{" "}
                             {new Date(apt.startTime).toLocaleTimeString([], {
@@ -329,13 +171,18 @@ export default function ProviderDashboard() {
                           </p>
                           {apt.patient && (
                             <p className="text-sm text-muted-foreground mt-1">
-                              Patient: {apt.patient.name || apt.patient.email}
+                              {apt.patient.name || apt.patient.email}
                             </p>
+                          )}
+                          {viewMode === "past" && (
+                            <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-muted">
+                              {apt.status}
+                            </span>
                           )}
                         </div>
                         <Link href={`/provider/appointments/${apt.id}`}>
                           <Button variant="outline" size="sm">
-                            View Details
+                            View
                           </Button>
                         </Link>
                       </div>
