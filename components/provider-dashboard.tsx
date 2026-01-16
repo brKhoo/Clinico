@@ -122,6 +122,12 @@ export default function ProviderDashboard() {
                 Availability
               </Button>
             </Link>
+            <Link href="/provider/slots">
+              <Button variant="ghost" size="sm">
+                <Clock className="h-4 w-4 mr-2" />
+                View Slots
+              </Button>
+            </Link>
             <Button variant="ghost" size="sm" onClick={() => signOut()}>
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
