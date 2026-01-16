@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,13 +20,11 @@ export default function AppointmentDetails({ appointmentId }: { appointmentId: s
   const [clinicalNotes, setClinicalNotes] = useState("")
   const [showIntake, setShowIntake] = useState(false)
 
-  useEffect(() => {
-    fetchAppointment()
-  }, [appointmentId])
-
-  const fetchAppointment = async () => {
+  const fetchAppointment = useCallback(async () => {
     try {
-      const response = await fetch(`/api/appointments/${appointmentId}`)
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        cache: "no-store", // Always fetch fresh data
+      })
       if (response.ok) {
         const data = await response.json()
         setAppointment(data)
@@ -36,7 +34,12 @@ export default function AppointmentDetails({ appointmentId }: { appointmentId: s
     } catch (error) {
       setLoading(false)
     }
-  }
+  }, [appointmentId])
+
+  useEffect(() => {
+    fetchAppointment()
+  }, [fetchAppointment])
+
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -107,7 +110,7 @@ export default function AppointmentDetails({ appointmentId }: { appointmentId: s
     )
   }
 
-  const isProvider = session?.user?.role === "PROVIDER" || session?.user?.role === "ADMIN"
+  const isProvider = session?.user?.role === "PROVIDER"
   const isPatient = appointment.patientId === session?.user?.id
   const canEditIntake = isPatient && new Date(appointment.startTime) > new Date()
 

@@ -16,8 +16,6 @@ export default function DashboardPage() {
         router.push("/patient")
       } else if (role === "PROVIDER") {
         router.push("/provider")
-      } else if (role === "ADMIN") {
-        router.push("/admin")
       }
     } else if (status === "unauthenticated") {
       router.push("/login")

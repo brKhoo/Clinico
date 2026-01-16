@@ -12,7 +12,7 @@ const appointmentSchema = z.object({
   endTime: z.string().datetime(),
   providerId: z.string().optional(),
   appointmentTypeId: z.string().optional(),
-  patientId: z.string().optional(), // For admin creating appointments
+  patientId: z.string().optional(),
 })
 
 export async function GET(request: Request) {
@@ -128,13 +128,11 @@ export async function POST(request: Request) {
           { status: 400 }
         )
       }
-    } else if (session.user.role === "ADMIN") {
-      if (!finalPatientId || !finalProviderId) {
-        return NextResponse.json(
-          { error: "Both patient and provider IDs are required" },
-          { status: 400 }
-        )
-      }
+    } else {
+      return NextResponse.json(
+        { error: "Invalid role" },
+        { status: 403 }
+      )
     }
 
     // Check for conflicts with provider's schedule

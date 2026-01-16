@@ -12,11 +12,6 @@ export default withAuth(
 
     const userRole = token.role as string
 
-    // Admin can access everything
-    if (userRole === "ADMIN") {
-      return NextResponse.next()
-    }
-
     // Patient routes
     if (path.startsWith("/patient")) {
       if (userRole !== "PATIENT") {
@@ -27,13 +22,6 @@ export default withAuth(
     // Provider routes
     if (path.startsWith("/provider")) {
       if (userRole !== "PROVIDER") {
-        return NextResponse.redirect(new URL("/unauthorized", req.url))
-      }
-    }
-
-    // Admin routes
-    if (path.startsWith("/admin")) {
-      if (userRole !== "ADMIN") {
         return NextResponse.redirect(new URL("/unauthorized", req.url))
       }
     }
@@ -59,7 +47,6 @@ export const config = {
   matcher: [
     "/patient/:path*",
     "/provider/:path*",
-    "/admin/:path*",
     "/dashboard/:path*",
     "/availability/:path*",
   ],

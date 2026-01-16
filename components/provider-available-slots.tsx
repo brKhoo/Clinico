@@ -133,7 +133,7 @@ export default function ProviderAvailableSlots() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Available Slots</h1>
+        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Available Slots</h1>
         <p className="text-muted-foreground">
           View your available time slots for booking
         </p>

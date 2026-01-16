@@ -89,12 +89,12 @@ export default function PatientDashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b">
+    <div className="min-h-screen bg-gradient-to-br from-green-50/30 via-white to-emerald-50/30 dark:from-gray-950 dark:via-gray-900 dark:to-green-950/20">
+      <nav className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Clinico Scheduler</h1>
-            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Clinico Scheduler</h1>
+            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 shadow-sm">
               PATIENT
             </span>
           </div>
@@ -112,15 +112,15 @@ export default function PatientDashboard() {
 
       <main className="container mx-auto px-4 py-8">
         {!profileComplete && (
-          <Card className="mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+          <Card className="mb-6 border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 shadow-md">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-yellow-600" />
-                  <p className="text-sm">Please complete your profile to book appointments.</p>
+                  <User className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <p className="text-sm font-medium">Please complete your profile to book appointments.</p>
                 </div>
                 <Link href="/patient/profile">
-                  <Button size="sm">Complete Profile</Button>
+                  <Button size="sm" className="shadow-sm">Complete Profile</Button>
                 </Link>
               </div>
             </CardContent>

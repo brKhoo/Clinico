@@ -17,7 +17,7 @@ model User {
   email         String    @unique
   name          String?
   password      String
-  role          String    @default("PATIENT") // PATIENT, PROVIDER, ADMIN
+  role          String    @default("PATIENT") // PATIENT, PROVIDER
   phone         String?
   dateOfBirth   DateTime?
   address       String?
@@ -48,7 +48,7 @@ model AppointmentType {
   description   String?
   duration      Int      // Duration in minutes
   bufferTime    Int      @default(0) // Buffer time in minutes before/after
-  price         Float?   // Optional price
+  price         Float     @default(0) // Price in dollars
   isActive      Boolean  @default(true)
   isArchived    Boolean  @default(false)
   archivedAt    DateTime?
@@ -79,7 +79,6 @@ model Appointment {
   intakeForms       String?         // JSON string for intake form data
   notes             String?         // Patient notes before visit
   clinicalNotes     String?         // Provider clinical notes after visit
-  paymentStatus     String          @default("PENDING") // PENDING, PAID, REFUNDED
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 

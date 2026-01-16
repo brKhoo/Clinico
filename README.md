@@ -4,7 +4,7 @@ A modern, full-featured appointment scheduling application built with Next.js, T
 
 ## Features
 
-- **Role-Based Access Control (RBAC)** - Three user roles: Patient, Provider, and Admin with separate dashboards
+- **Role-Based Access Control (RBAC)** - Two user roles: Patient and Provider with separate dashboards
 - **User Authentication** - Secure signup and login with NextAuth.js
 - **Appointment Management** - Create, view, reschedule, and cancel appointments
 - **Scheduling Logic** - Conflict detection and availability management
@@ -63,10 +63,6 @@ npm run dev
 
 After running the seed script, you can use these credentials:
 
-**Admin:**
-- Email: `admin@clinico.com`
-- Password: `admin123`
-
 **Provider 1:**
 - Email: `doctor.smith@clinico.com`
 - Password: `provider123`
@@ -95,14 +91,10 @@ After running the seed script, you can use these credentials:
 - Mark appointment completed / no-show → add clinical notes
 - Optionally propose follow-up slots / appointment types
 
-### Admin
-- Manage providers + patients (invite/disable/delete)
-- Configure appointment types (duration, buffers, price) + office hours + closures
-- View audit log + reporting dashboard + exports
 
 ## Database Schema
 
-- **User**: User accounts with authentication and roles (PATIENT, PROVIDER, ADMIN)
+- **User**: User accounts with authentication and roles (PATIENT, PROVIDER)
 - **Appointment**: Scheduled appointments with time slots, status, and notes
 - **AppointmentType**: Configurable appointment types with duration and pricing
 - **Availability**: Weekly availability settings per provider
@@ -130,7 +122,6 @@ After running the seed script, you can use these credentials:
   /api          - API routes
   /patient      - Patient dashboard and pages
   /provider     - Provider dashboard and pages
-  /admin        - Admin dashboard and pages
 /components    - React components
 /lib           - Utilities (auth, prisma, rbac, audit)
 /prisma        - Database schema and migrations
@@ -142,7 +133,7 @@ After running the seed script, you can use these credentials:
 ### ✅ Completed
 - [x] Prisma schema with all models (User, Appointment, AppointmentType, AuditLog, WaitlistEntry, etc.)
 - [x] Role-based access control (RBAC) with middleware
-- [x] Role-based dashboards (/patient, /provider, /admin)
+- [x] Role-based dashboards (/patient, /provider)
 - [x] Database seed script with demo accounts
 - [x] Audit logging infrastructure
 - [x] Soft delete support (isArchived fields)
@@ -151,15 +142,12 @@ After running the seed script, you can use these credentials:
 - [ ] Calendar UI views (day/week for providers)
 - [ ] Reschedule and cancellation flow with policy enforcement
 - [ ] Waitlist UI and notification system
-- [ ] Admin analytics dashboard with charts
 - [ ] Search and filters for appointments
 - [ ] Webhook system implementation
 - [ ] Accessibility improvements (ARIA labels, keyboard navigation)
 - [ ] Patient profile completion flow
 - [ ] Appointment booking flow with provider selection
 - [ ] Provider availability management UI
-- [ ] Admin user management UI
-- [ ] Admin appointment type configuration UI
 
 ## Development
 

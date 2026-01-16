@@ -6,21 +6,6 @@ const prisma = new PrismaClient()
 async function main() {
   console.log("🌱 Seeding database...")
 
-  // Create admin user
-  const adminPassword = await bcrypt.hash("admin123", 10)
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@clinico.com" },
-    update: {},
-    create: {
-      email: "admin@clinico.com",
-      name: "Admin User",
-      password: adminPassword,
-      role: "ADMIN",
-      profileComplete: true,
-    },
-  })
-  console.log("✅ Created admin user:", admin.email)
-
   // Create provider users
   const provider1Password = await bcrypt.hash("provider123", 10)
   const provider1 = await prisma.user.upsert({
@@ -68,7 +53,7 @@ async function main() {
   })
   console.log("✅ Created patient user:", patient.email)
 
-  // Create appointment types
+  // Create appointment types with hardcoded prices
   const appointmentTypes = [
     {
       name: "General Consultation",
@@ -76,7 +61,6 @@ async function main() {
       duration: 30,
       bufferTime: 10,
       price: 150.0,
-      createdById: admin.id,
     },
     {
       name: "Follow-up Visit",
@@ -84,7 +68,6 @@ async function main() {
       duration: 15,
       bufferTime: 5,
       price: 75.0,
-      createdById: admin.id,
     },
     {
       name: "Annual Checkup",
@@ -92,7 +75,6 @@ async function main() {
       duration: 60,
       bufferTime: 15,
       price: 300.0,
-      createdById: admin.id,
     },
   ]
 
@@ -195,10 +177,7 @@ async function main() {
   console.log("\n🎉 Seeding completed!")
   console.log("\n📋 Demo Credentials:")
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-  console.log("Admin:")
-  console.log("  Email: admin@clinico.com")
-  console.log("  Password: admin123")
-  console.log("\nProvider 1:")
+  console.log("Provider 1:")
   console.log("  Email: doctor.smith@clinico.com")
   console.log("  Password: provider123")
   console.log("\nProvider 2:")

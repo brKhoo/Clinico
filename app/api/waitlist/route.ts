@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logAuditEvent } from "@/lib/audit"
 import { z } from "zod"
-import { requireAdmin } from "@/lib/rbac"
 
 const waitlistSchema = z.object({
   appointmentTypeId: z.string(),
@@ -27,8 +26,6 @@ export async function GET(request: Request) {
 
     if (session.user.role === "PATIENT") {
       where.patientId = session.user.id
-    } else if (session.user.role === "ADMIN") {
-      if (patientId) where.patientId = patientId
     } else {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }

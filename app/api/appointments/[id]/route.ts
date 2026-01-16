@@ -36,13 +36,12 @@ export async function GET(
         OR: [
           { patientId: session.user.id },
           { providerId: session.user.id },
-          ...(session.user.role === "ADMIN" ? [{}] : []),
         ],
       },
       include: {
         patient: { select: { id: true, name: true, email: true } },
         provider: { select: { id: true, name: true, email: true } },
-        appointmentType: { select: { id: true, name: true, duration: true } },
+        appointmentType: { select: { id: true, name: true, duration: true, price: true } },
       },
     })
 
@@ -78,7 +77,6 @@ export async function PATCH(
         OR: [
           { patientId: session.user.id },
           { providerId: session.user.id },
-          ...(session.user.role === "ADMIN" ? [{}] : []),
         ],
       },
     })
@@ -90,7 +88,6 @@ export async function PATCH(
     // Check permissions
     const isPatient = appointment.patientId === session.user.id
     const isProvider = appointment.providerId === session.user.id
-    const isAdmin = session.user.role === "ADMIN"
 
     // Policy enforcement for reschedule/cancellation
     if ((startTime || endTime) && isPatient) {
@@ -158,7 +155,7 @@ export async function PATCH(
     if (startTime) updateData.startTime = new Date(startTime)
     if (endTime) updateData.endTime = new Date(endTime)
     if (status) updateData.status = status
-    if (clinicalNotes !== undefined && (isProvider || isAdmin)) updateData.clinicalNotes = clinicalNotes
+    if (clinicalNotes !== undefined && isProvider) updateData.clinicalNotes = clinicalNotes
     if (notes !== undefined && isPatient) updateData.notes = notes
     if (intakeForms !== undefined && isPatient) updateData.intakeForms = intakeForms
 
@@ -231,7 +228,6 @@ export async function DELETE(
         OR: [
           { patientId: session.user.id },
           { providerId: session.user.id },
-          ...(session.user.role === "ADMIN" ? [{}] : []),
         ],
       },
     })

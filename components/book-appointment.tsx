@@ -16,7 +16,6 @@ interface AppointmentType {
   name: string
   description?: string
   duration: number
-  price?: number
 }
 
 interface Provider {
@@ -177,7 +176,7 @@ export default function BookAppointment() {
 
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Book Appointment</h1>
+          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Book Appointment</h1>
           <p className="text-muted-foreground">
             {step === "type" && "Select an appointment type"}
             {step === "provider" && "Choose a provider"}
@@ -208,9 +207,6 @@ export default function BookAppointment() {
                       <Clock className="h-4 w-4" />
                       {type.duration} min
                     </span>
-                    {type.price && (
-                      <span className="font-semibold">${type.price}</span>
-                    )}
                   </div>
                 </CardContent>
               </Card>
