@@ -10,32 +10,84 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Note: SQLite doesn't support enums, using String with constraints
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
   password      String
-  role          String    @default("user") // "user" or "admin"
+  role          String    @default("PATIENT") // PATIENT, PROVIDER, ADMIN
+  phone         String?
+  dateOfBirth   DateTime?
+  address       String?
+  profileComplete Boolean @default(false)
+  isArchived    Boolean   @default(false)
+  archivedAt    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  appointments  Clinico[]
-  availability  Availability[]
+  
+  // Relations
+  patientAppointments  Appointment[] @relation("PatientAppointments")
+  providerAppointments Appointment[] @relation("ProviderAppointments")
+  availability        Availability[]
+  availabilityExceptions AvailabilityException[]
+  waitlistEntriesAsPatient WaitlistEntry[] @relation("WaitlistPatient")
+  waitlistEntriesAsProvider WaitlistEntry[] @relation("WaitlistProvider")
+  auditLogs           AuditLog[]
+  createdAppointmentTypes AppointmentType[] @relation("CreatedBy")
+  
+  @@index([role])
+  @@index([email])
+  @@index([isArchived])
 }
 
-model Clinico {
+model AppointmentType {
   id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title         String
+  name          String
   description   String?
-  startTime     DateTime
-  endTime       DateTime
-  status        String   @default("scheduled") // "scheduled", "completed", "cancelled"
+  duration      Int      // Duration in minutes
+  bufferTime    Int      @default(0) // Buffer time in minutes before/after
+  price         Float?   // Optional price
+  isActive      Boolean  @default(true)
+  isArchived    Boolean  @default(false)
+  archivedAt    DateTime?
+  createdById   String?
+  createdBy     User?    @relation("CreatedBy", fields: [createdById], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  
+  appointments  Appointment[]
+  waitlistEntries WaitlistEntry[]
+  
+  @@index([isActive, isArchived])
+}
 
-  @@index([userId])
+model Appointment {
+  id                String          @id @default(cuid())
+  patientId         String
+  patient           User            @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  providerId        String?
+  provider          User?           @relation("ProviderAppointments", fields: [providerId], references: [id])
+  appointmentTypeId String?
+  appointmentType   AppointmentType? @relation(fields: [appointmentTypeId], references: [id])
+  title             String
+  description       String?
+  startTime         DateTime
+  endTime           DateTime
+  status            String            @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+  intakeForms       String?         // JSON string for intake form data
+  notes             String?         // Patient notes before visit
+  clinicalNotes     String?         // Provider clinical notes after visit
+  paymentStatus     String          @default("PENDING") // PENDING, PAID, REFUNDED
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([patientId])
+  @@index([providerId])
   @@index([startTime])
+  @@index([status])
+  @@index([appointmentTypeId])
 }
 
 model Availability {
@@ -51,4 +103,84 @@ model Availability {
 
   @@index([userId])
   @@unique([userId, dayOfWeek])
+}
+
+model AvailabilityException {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime // Specific date for exception
+  startTime   String?  // If null, entire day is blocked
+  endTime     String?
+  reason      String?  // e.g., "Vacation", "Holiday"
+  isBlocked   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+}
+
+model WaitlistEntry {
+  id                String   @id @default(cuid())
+  patientId        String
+  patient          User      @relation("WaitlistPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentTypeId String
+  appointmentType  AppointmentType @relation(fields: [appointmentTypeId], references: [id])
+  providerId       String?
+  provider         User?     @relation("WaitlistProvider", fields: [providerId], references: [id])
+  preferredDays    String?   // JSON array of preferred days
+  status           String    @default("active") // "active", "notified", "booked", "cancelled"
+  notifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([appointmentTypeId])
+  @@index([providerId])
+  @@index([status])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  actor       User     @relation(fields: [actorUserId], references: [id])
+  action      String   // e.g., "APPOINTMENT_CREATED", "APPOINTMENT_CANCELLED", "AVAILABILITY_UPDATED"
+  entityType  String   // e.g., "Appointment", "Availability", "User"
+  entityId    String?
+  metadata    String?  // JSON string for additional data
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model ClinicPolicy {
+  id                    String   @id @default(cuid())
+  cancellationCutoffHours Int    @default(24) // Hours before appointment
+  rescheduleCutoffHours   Int    @default(12) // Hours before appointment
+  officeHoursStart        String @default("09:00")
+  officeHoursEnd          String @default("17:00")
+  officeDays              String @default("1,2,3,4,5") // Comma-separated day numbers (1=Monday)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String   // e.g., "stripe", "custom"
+  eventType   String
+  payload     String   // JSON string
+  signature   String?
+  processedAt DateTime?
+  status      String   @default("pending") // "pending", "processed", "failed"
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([provider])
+  @@index([eventType])
+  @@index([status])
+  @@index([createdAt])
 }

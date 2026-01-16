@@ -2,6 +2,23 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logAuditEvent } from "@/lib/audit"
+
+async function getClinicPolicy() {
+  const policy = await prisma.clinicPolicy.findFirst({
+    where: { id: "default" },
+  })
+  return policy || {
+    cancellationCutoffHours: 24,
+    rescheduleCutoffHours: 12,
+  }
+}
+
+async function checkPolicyCutoff(appointmentStartTime: Date, cutoffHours: number): Promise<boolean> {
+  const now = new Date()
+  const cutoffTime = new Date(appointmentStartTime.getTime() - cutoffHours * 60 * 60 * 1000)
+  return now > cutoffTime
+}
 
 export async function GET(
   request: Request,
@@ -16,12 +33,21 @@ export async function GET(
     const appointment = await prisma.appointment.findFirst({
       where: {
         id: params.id,
-        userId: session.user.id,
+        OR: [
+          { patientId: session.user.id },
+          { providerId: session.user.id },
+          ...(session.user.role === "ADMIN" ? [{}] : []),
+        ],
+      },
+      include: {
+        patient: { select: { id: true, name: true, email: true } },
+        provider: { select: { id: true, name: true, email: true } },
+        appointmentType: { select: { id: true, name: true, duration: true } },
       },
     })
 
     if (!appointment) {
-      return NextResponse.json({ error: "Clinico not found" }, { status: 404 })
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
     }
 
     return NextResponse.json(appointment)
@@ -44,17 +70,43 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, description, startTime, endTime, status } = body
+    const { title, description, startTime, endTime, status, clinicalNotes, notes, intakeForms } = body
 
     const appointment = await prisma.appointment.findFirst({
       where: {
         id: params.id,
-        userId: session.user.id,
+        OR: [
+          { patientId: session.user.id },
+          { providerId: session.user.id },
+          ...(session.user.role === "ADMIN" ? [{}] : []),
+        ],
       },
     })
 
     if (!appointment) {
-      return NextResponse.json({ error: "Clinico not found" }, { status: 404 })
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+    }
+
+    // Check permissions
+    const isPatient = appointment.patientId === session.user.id
+    const isProvider = appointment.providerId === session.user.id
+    const isAdmin = session.user.role === "ADMIN"
+
+    // Policy enforcement for reschedule/cancellation
+    if ((startTime || endTime) && isPatient) {
+      const policy = await getClinicPolicy()
+      const newStartTime = startTime ? new Date(startTime) : appointment.startTime
+      const withinCutoff = await checkPolicyCutoff(newStartTime, policy.rescheduleCutoffHours)
+      
+      if (withinCutoff) {
+        return NextResponse.json(
+          { 
+            error: `Cannot reschedule. Must reschedule at least ${policy.rescheduleCutoffHours} hours before the appointment.`,
+            cutoffHours: policy.rescheduleCutoffHours,
+          },
+          { status: 400 }
+        )
+      }
     }
 
     // If times are being updated, validate and check for conflicts
@@ -69,12 +121,12 @@ export async function PATCH(
         )
       }
 
-      // Check for conflicts with other appointments (excluding the current one)
+      // Check for conflicts with provider's schedule
       const conflictingAppointment = await prisma.appointment.findFirst({
         where: {
-          userId: session.user.id,
+          providerId: appointment.providerId,
           id: { not: params.id },
-          status: { not: "cancelled" },
+          status: { not: "CANCELLED" },
           OR: [
             {
               startTime: { lte: start },
@@ -100,19 +152,62 @@ export async function PATCH(
       }
     }
 
+    const updateData: any = {}
+    if (title) updateData.title = title
+    if (description !== undefined) updateData.description = description
+    if (startTime) updateData.startTime = new Date(startTime)
+    if (endTime) updateData.endTime = new Date(endTime)
+    if (status) updateData.status = status
+    if (clinicalNotes !== undefined && (isProvider || isAdmin)) updateData.clinicalNotes = clinicalNotes
+    if (notes !== undefined && isPatient) updateData.notes = notes
+    if (intakeForms !== undefined && isPatient) updateData.intakeForms = intakeForms
+
+    const wasRescheduled = (startTime || endTime) && (startTime !== appointment.startTime.toISOString() || endTime !== appointment.endTime.toISOString())
+    const wasStatusChanged = status && status !== appointment.status
+
     const updatedAppointment = await prisma.appointment.update({
       where: { id: params.id },
-      data: {
-        ...(title && { title }),
-        ...(description !== undefined && { description }),
-        ...(startTime && { startTime: new Date(startTime) }),
-        ...(endTime && { endTime: new Date(endTime) }),
-        ...(status && { status }),
+      data: updateData,
+      include: {
+        patient: { select: { id: true, name: true, email: true } },
+        provider: { select: { id: true, name: true, email: true } },
+        appointmentType: { select: { id: true, name: true } },
       },
     })
 
+    // Log audit events
+    if (wasRescheduled) {
+      await logAuditEvent(
+        session.user.id,
+        "APPOINTMENT_RESCHEDULED",
+        "Appointment",
+        appointment.id,
+        {
+          oldStartTime: appointment.startTime.toISOString(),
+          newStartTime: updatedAppointment.startTime.toISOString(),
+        }
+      )
+    }
+
+    if (wasStatusChanged) {
+      const actionMap: Record<string, string> = {
+        COMPLETED: "APPOINTMENT_COMPLETED",
+        CANCELLED: "APPOINTMENT_CANCELLED",
+        NO_SHOW: "APPOINTMENT_NO_SHOW",
+      }
+      const action = actionMap[status] || "APPOINTMENT_UPDATED"
+      await logAuditEvent(
+        session.user.id,
+        action as any,
+        "Appointment",
+        appointment.id,
+        { oldStatus: appointment.status, newStatus: status }
+      )
+    }
+
     return NextResponse.json(updatedAppointment)
   } catch (error) {
+    console.error("Error updating appointment:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -133,21 +228,54 @@ export async function DELETE(
     const appointment = await prisma.appointment.findFirst({
       where: {
         id: params.id,
-        userId: session.user.id,
+        OR: [
+          { patientId: session.user.id },
+          { providerId: session.user.id },
+          ...(session.user.role === "ADMIN" ? [{}] : []),
+        ],
       },
     })
 
     if (!appointment) {
-      return NextResponse.json({ error: "Clinico not found" }, { status: 404 })
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 })
+    }
+
+    // Policy enforcement for cancellation
+    if (appointment.patientId === session.user.id) {
+      const policy = await getClinicPolicy()
+      const withinCutoff = await checkPolicyCutoff(appointment.startTime, policy.cancellationCutoffHours)
+      
+      if (withinCutoff) {
+        return NextResponse.json(
+          { 
+            error: `Cannot cancel. Must cancel at least ${policy.cancellationCutoffHours} hours before the appointment.`,
+            cutoffHours: policy.cancellationCutoffHours,
+          },
+          { status: 400 }
+        )
+      }
     }
 
     await prisma.appointment.update({
       where: { id: params.id },
-      data: { status: "cancelled" },
+      data: { status: "CANCELLED" },
     })
 
-    return NextResponse.json({ message: "Clinico cancelled" })
+    // Log audit event
+    await logAuditEvent(
+      session.user.id,
+      "APPOINTMENT_CANCELLED",
+      "Appointment",
+      appointment.id,
+      {
+        cancelledBy: session.user.role,
+        originalStartTime: appointment.startTime.toISOString(),
+      }
+    )
+
+    return NextResponse.json({ message: "Appointment cancelled" })
   } catch (error) {
+    console.error("Error cancelling appointment:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

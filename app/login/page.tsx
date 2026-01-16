@@ -39,7 +39,9 @@ export default function LoginPage() {
           title: "Success",
           description: "Logged in successfully",
         })
-        router.push("/dashboard")
+        // Redirect to home page which will handle role-based routing
+        router.push("/")
+        router.refresh()
       }
     } catch (error) {
       toast({

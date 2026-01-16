@@ -8,7 +8,7 @@ import { Trash2, Calendar, Clock, Edit } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EditAppointmentDialog } from "@/components/edit-appointment-dialog"
 
-interface Clinico {
+interface Appointment {
   id: string
   title: string
   description?: string
@@ -18,13 +18,13 @@ interface Clinico {
 }
 
 interface AppointmentListProps {
-  appointments: Clinico[]
+  appointments: Appointment[]
   onUpdate: () => void
 }
 
 export function AppointmentList({ appointments, onUpdate }: AppointmentListProps) {
   const { toast } = useToast()
-  const [editingAppointment, setEditingAppointment] = useState<Clinico | null>(null)
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const handleCancel = async (id: string) => {
@@ -40,7 +40,7 @@ export function AppointmentList({ appointments, onUpdate }: AppointmentListProps
       if (response.ok) {
         toast({
           title: "Success",
-          description: "Clinico cancelled",
+          description: "Appointment cancelled",
         })
         onUpdate()
       } else {

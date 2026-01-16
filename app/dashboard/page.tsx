@@ -2,34 +2,37 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { signOut } from "next-auth/react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Plus, LogOut, Settings } from "lucide-react"
-import Link from "next/link"
-import { AppointmentList } from "@/components/appointment-list"
-import { CreateAppointmentDialog } from "@/components/create-appointment-dialog"
-import { formatDate, formatTime } from "@/lib/utils"
+import { useEffect } from "react"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [appointments, setAppointments] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "authenticated" && session?.user) {
+      // Redirect based on role
+      const role = session.user.role
+      if (role === "PATIENT") {
+        router.push("/patient")
+      } else if (role === "PROVIDER") {
+        router.push("/provider")
+      } else if (role === "ADMIN") {
+        router.push("/admin")
+      }
+    } else if (status === "unauthenticated") {
       router.push("/login")
     }
-  }, [status, router])
+  }, [status, session, router])
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchAppointments()
-    }
-  }, [status])
+  // Show loading while redirecting
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Redirecting...</p>
+      </div>
+    </div>
+  )
 
   const fetchAppointments = async () => {
     try {
@@ -103,7 +106,7 @@ export default function DashboardPage() {
           </div>
           <Button onClick={() => setIsDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            New Clinico
+            New Appointment
           </Button>
         </div>
 

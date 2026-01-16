@@ -61,7 +61,7 @@ export function CreateAppointmentDialog({
 
       toast({
         title: "Success",
-        description: "Clinico created successfully",
+        description: "Appointment created successfully",
       })
 
       setTitle("")
@@ -84,7 +84,7 @@ export function CreateAppointmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Clinico</DialogTitle>
+          <DialogTitle>Create New Appointment</DialogTitle>
           <DialogDescription>
             Fill in the details to schedule a new appointment.
           </DialogDescription>
@@ -99,6 +99,8 @@ export function CreateAppointmentDialog({
                 onChange={(e) => setTitle(e.target.value)}
                 required
                 placeholder="Meeting with client"
+                aria-label="Appointment title"
+                aria-required="true"
               />
             </div>
             <div className="space-y-2">
@@ -108,6 +110,7 @@ export function CreateAppointmentDialog({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Discuss project details"
+                aria-label="Appointment description"
               />
             </div>
             <div className="space-y-2">
@@ -118,6 +121,8 @@ export function CreateAppointmentDialog({
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 required
+                aria-label="Appointment start time"
+                aria-required="true"
               />
             </div>
             <div className="space-y-2">
@@ -128,6 +133,8 @@ export function CreateAppointmentDialog({
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 required
+                aria-label="Appointment end time"
+                aria-required="true"
               />
             </div>
           </div>
@@ -140,7 +147,7 @@ export function CreateAppointmentDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Clinico"}
+              {isLoading ? "Creating..." : "Create Appointment"}
             </Button>
           </DialogFooter>
         </form>

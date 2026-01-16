@@ -2,21 +2,43 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
 export default function Home() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
 
   useEffect(() => {
-    if (status === "authenticated") {
-      router.push("/dashboard")
-    }
-  }, [status, router])
+    // Set a timeout to prevent infinite loading
+    const timer = setTimeout(() => {
+      if (status === "loading") {
+        setLoadingTimeout(true)
+      }
+    }, 3000) // 3 second timeout
 
-  if (status === "loading") {
+    return () => clearTimeout(timer)
+  }, [status])
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const role = session.user.role
+      if (role === "PATIENT") {
+        router.push("/patient")
+      } else if (role === "PROVIDER") {
+        router.push("/provider")
+      } else if (role === "ADMIN") {
+        router.push("/admin")
+      } else {
+        router.push("/dashboard")
+      }
+    }
+  }, [status, session, router])
+
+  // Show loading only briefly, then show content even if session is still loading
+  if (status === "loading" && !loadingTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

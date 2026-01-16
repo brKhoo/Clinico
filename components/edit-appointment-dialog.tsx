@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 
-interface Clinico {
+interface Appointment {
   id: string
   title: string
   description?: string
@@ -26,7 +26,7 @@ interface Clinico {
 interface EditAppointmentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  appointment: Clinico | null
+  appointment: Appointment | null
   onAppointmentUpdated: () => void
 }
 
@@ -94,7 +94,7 @@ export function EditAppointmentDialog({
 
       toast({
         title: "Success",
-        description: "Clinico updated successfully",
+        description: "Appointment updated successfully",
       })
 
       onAppointmentUpdated()
@@ -114,7 +114,7 @@ export function EditAppointmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Clinico</DialogTitle>
+          <DialogTitle>Edit Appointment</DialogTitle>
           <DialogDescription>
             Update the details of your appointment.
           </DialogDescription>
@@ -170,7 +170,7 @@ export function EditAppointmentDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update Clinico"}
+              {isLoading ? "Updating..." : "Update Appointment"}
             </Button>
           </DialogFooter>
         </form>
