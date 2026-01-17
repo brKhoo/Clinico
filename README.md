@@ -17,7 +17,7 @@ A modern, full-stack appointment scheduling web application built with Next.js, 
 - **Database**: SQLite (with Prisma)
 - **Authentication**: NextAuth.js
 - **Styling**: Tailwind CSS
-- **UI Components**: Radix UI + Custom components
+- **UI Components**: React + Custom components
 
 ## Get Started
 
